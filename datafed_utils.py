@@ -414,7 +414,7 @@ def data_update(data_id, title=None, alias=None, description=None,
   -p, --project TEXT              Project ID for command
     """
     options = _data_update_create(title=title, alias=alias, description=description,
-                                  collections=None,
+                                  collection=None,
                                   keywords=keywords, raw_data_file=raw_data_file, 
                                   extension=extension, metadata=metadata, 
                                   clear_dependencies=clear_dependencies, 
