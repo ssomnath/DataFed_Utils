@@ -123,7 +123,8 @@ def validate_list_of_strings(str_list, parm_name='parameter'):
         return [validate_single_string_arg(str_list, parm_name)]
 
     if not isinstance(str_list, (list, tuple)):
-        raise TypeError(parm_name + ' should be a string or list / tuple of strings')
+        raise TypeError(parm_name + ' should be a string or list / tuple of '
+                                    'strings')
 
     return [validate_single_string_arg(x, parm_name) for x in str_list]
 
@@ -414,6 +415,57 @@ def create_df_record(title, alias=None, description=None, keywords=None,
         raise ValueError(message[0].err_msg)
     
     return message
+
+
+def create_or_get_collection(name, parent_collection='root',
+                             avoid_duplicates=True, verbose=False):
+    def _list_all_collections(coll_name):
+        total_records = 1
+        offset = 0
+        colls_done = False
+        all_collections = []
+        while offset < total_records:
+            item_list, offset, total_records = list_items(coll_name,
+                                                          offset=offset)
+            for ind, item in enumerate(item_list):
+                if item.id.startswith('c/'):
+                    all_collections.append(item_list[ind])
+                elif item.id.startswith('d/'):
+                    colls_done = True
+                    break
+            if colls_done:
+                break
+            offset += len(item_list)
+        return all_collections
+
+    def _get_clean_title(title):
+        for char in '~`!@#$%^&*()+=[{}]|\:,;"<>/?-':
+            title = title.replace(char, '_')
+        title = title.replace(' ', '_')[:MAX_ALIAS_LENGTH]
+        return title.strip()
+
+    name = _get_clean_title(name)
+
+    if avoid_duplicates:
+        existing_colls = _list_all_collections(parent_collection)
+        for item in existing_colls:
+            if name == item.title:
+                if verbose:
+                    warn(
+                        'Returning ID of existing collection with target name'
+                        ': "' + name + '"')
+                return item.id
+
+    com = 'coll create -c ' + parent_collection + ' ' + name
+    if verbose:
+        print('Sending command: ' + com)
+    message = df.command(com)
+    if verbose:
+        print('Received message: {}'.format(message))
+    if message[-1] == 'CollDataReply':
+        return message[0].coll[0].id
+    raise ValueError(
+        'Something went wrong. Returned message: {}'.format(message))
 
 
 def move_to_collection(ids, source_coll, dest_coll, verbose=False):
